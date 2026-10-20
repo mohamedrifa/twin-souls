@@ -25,7 +25,7 @@ async function startServer() {
     // 3. Initialize Socket.IO
     const io = new Server(server, {
       cors: {
-        origin: '*', // Allow connections from phone testing
+        origin: (origin, callback) => callback(null, true), // Allow all origins including Netlify & mobile
         methods: ['GET', 'POST'],
         credentials: true
       },
