@@ -132,25 +132,30 @@ export function useRecorder({ token, onChunkUploaded, onFinalized }) {
       }
       mimeTypeRef.current = mimeType;
 
-      // Request camera and microphone
+      // Request camera and microphone with high-definition clarity
       let stream = null;
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: 'user',
-            width: { ideal: 640 },
-            height: { ideal: 480 },
-            frameRate: { ideal: 24, max: 30 }
+            width: { ideal: 1280, min: 640 },
+            height: { ideal: 720, min: 480 },
+            frameRate: { ideal: 30, min: 20 }
           },
-          audio: true
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
         });
       } catch (audioErr) {
-        console.warn('Audio + video failed, attempting video-only:', audioErr);
+        console.warn('Audio + video failed, attempting HD video-only:', audioErr);
         stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: 'user',
-            width: { ideal: 640 },
-            height: { ideal: 480 }
+            width: { ideal: 1280, min: 640 },
+            height: { ideal: 720, min: 480 },
+            frameRate: { ideal: 30, min: 20 }
           },
           audio: false
         });
@@ -166,10 +171,17 @@ export function useRecorder({ token, onChunkUploaded, onFinalized }) {
 
       let recorder = null;
       try {
-        recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+        recorder = new MediaRecorder(stream, {
+          mimeType,
+          videoBitsPerSecond: 2000000 // 2 Mbps for sharp, clear HD reaction capture
+        });
       } catch (mimeErr) {
-        console.warn(`MediaRecorder init failed with ${mimeType}, falling back to browser default:`, mimeErr);
-        recorder = new MediaRecorder(stream);
+        try {
+          recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+        } catch (fallbackErr) {
+          console.warn('Falling back to default recorder:', fallbackErr);
+          recorder = new MediaRecorder(stream);
+        }
       }
 
       if (typeof window !== 'undefined') {

@@ -102,12 +102,13 @@ async function convertToUniversalMp4(inputPath, outputFileKey) {
   try {
     console.log(`Starting conversion to universal MP4: ${inputPath} -> ${outputPath}`);
     
-    // FFmpeg arguments:
+    // FFmpeg arguments for crystal-clear HD MP4:
     // -y: overwrite
     // -i inputPath: input video file
     // -c:v libx264: encode to universally compatible H.264
-    // -preset veryfast: fast mobile-friendly encoding
-    // -pix_fmt yuv420p: critical for Windows Media Player & iOS/QuickTime compatibility
+    // -crf 20: crisp, high-definition clear video quality
+    // -preset fast: clean balance of quality and encoding efficiency
+    // -pix_fmt yuv420p: critical for Windows Media Player & iOS/QuickTime universal playback
     // -c:a aac: universal AAC audio
     // -b:a 128k: audio bitrate
     // -movflags +faststart: relocate moov atom to beginning of MP4 for instant streaming & seeking
@@ -115,7 +116,8 @@ async function convertToUniversalMp4(inputPath, outputFileKey) {
       '-y',
       '-i', inputPath,
       '-c:v', 'libx264',
-      '-preset', 'veryfast',
+      '-crf', '20',
+      '-preset', 'fast',
       '-pix_fmt', 'yuv420p',
       '-c:a', 'aac',
       '-b:a', '128k',
@@ -126,6 +128,17 @@ async function convertToUniversalMp4(inputPath, outputFileKey) {
     if (fs.existsSync(outputPath)) {
       const stats = fs.statSync(outputPath);
       console.log(`Successfully converted to universal MP4 (${stats.size} bytes): ${outputFileKey}`);
+
+      // Delete raw input file (e.g. .webm) so ONLY the final .mp4 is stored in the folder!
+      if (inputPath !== outputPath && fs.existsSync(inputPath)) {
+        try {
+          fs.unlinkSync(inputPath);
+          console.log(`Removed raw temporary recording file: ${path.basename(inputPath)}`);
+        } catch (unlinkErr) {
+          console.warn('Could not delete raw input file:', unlinkErr.message);
+        }
+      }
+
       return { mp4FileKey: outputFileKey, mp4FilePath: outputPath };
     }
   } catch (err) {
@@ -150,13 +163,19 @@ async function finalizeRecording({ sessionId, participant }) {
   record.status = 'completed';
   record.completedAt = new Date();
 
-  // If video file has content, convert to universally playable MP4
+  // If video file has content, convert to universally playable MP4 and delete raw file
   if (record.totalBytes > 0 && fs.existsSync(record.filePath)) {
     const mp4FileKey = generateSecureFileKey(sessionId, participant, 'mp4');
     const transcodeResult = await convertToUniversalMp4(record.filePath, mp4FileKey);
     if (transcodeResult) {
       record.mp4FileKey = transcodeResult.mp4FileKey;
       record.mp4FilePath = transcodeResult.mp4FilePath;
+      record.fileKey = transcodeResult.mp4FileKey;
+      record.filePath = transcodeResult.mp4FilePath;
+      record.mimeType = 'video/mp4';
+      if (fs.existsSync(transcodeResult.mp4FilePath)) {
+        record.totalBytes = fs.statSync(transcodeResult.mp4FilePath).size;
+      }
     }
   }
 

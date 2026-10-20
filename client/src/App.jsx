@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useCelebrationSocket } from './hooks/useCelebrationSocket';
 import { useRecorder } from './hooks/useRecorder';
 import { saveRevealedState, getRevealedState, clearRevealedState } from './utils/cookieStorage';
@@ -182,20 +182,55 @@ export default function App() {
     setCurrentScreen('reveal');
   };
 
-  // 6. Handle app download button click - Stop recording automatically after 10 seconds
-  const handleAppDownloadClicked = () => {
-    if (downloadTimerStarted) return;
-    setDownloadTimerStarted(true);
-    console.log('App download clicked. Reaction recording will stop automatically in 10 seconds...');
+  // Dual-timer references for stopping reaction recording
+  const pageTimerRef = useRef(null);
+  const downloadTimerRef = useRef(null);
+  const hasFinishedRecordingRef = useRef(false);
 
-    setTimeout(() => {
-      console.log('10 seconds elapsed since app download click. Stopping and finalizing recording.');
-      stopRecording();
+  // Helper to cleanly stop recording once
+  const triggerStopRecording = (reason) => {
+    if (hasFinishedRecordingRef.current) return;
+    hasFinishedRecordingRef.current = true;
+    console.log(`🎬 Stopping and finalizing reaction recording: ${reason}`);
+
+    if (pageTimerRef.current) clearTimeout(pageTimerRef.current);
+    if (downloadTimerRef.current) clearTimeout(downloadTimerRef.current);
+
+    stopRecording();
+  };
+
+  // Trigger 1: Auto-stop 30 seconds after Surprise Unveiled page appears
+  useEffect(() => {
+    if (currentScreen === 'reveal' && isRecording && !hasFinishedRecordingRef.current) {
+      console.log('Surprise Unveiled page reached. 30-second auto-stop timer started...');
+      pageTimerRef.current = setTimeout(() => {
+        triggerStopRecording('30 seconds elapsed on Surprise page');
+      }, 30000);
+
+      return () => {
+        if (pageTimerRef.current) {
+          clearTimeout(pageTimerRef.current);
+        }
+      };
+    }
+  }, [currentScreen, isRecording]);
+
+  // Trigger 2: 10 seconds after clicking "Unlock & Download App" button (or 30s timer, whichever is first)
+  const handleAppDownloadClicked = () => {
+    if (downloadTimerStarted || hasFinishedRecordingRef.current || !isRecording) return;
+    setDownloadTimerStarted(true);
+    console.log('App download clicked. Scheduling stop in 10 seconds (or when 30s page limit expires)...');
+
+    downloadTimerRef.current = setTimeout(() => {
+      triggerStopRecording('10 seconds elapsed after app download click');
     }, 10000);
   };
 
   // 7. Full Rehearsal / Organizer Reset
   const handleRehearseReset = async () => {
+    hasFinishedRecordingRef.current = false;
+    if (pageTimerRef.current) clearTimeout(pageTimerRef.current);
+    if (downloadTimerRef.current) clearTimeout(downloadTimerRef.current);
     clearRevealedState();
     setPersistedParticipant(null);
     setPersistedGifts(null);
