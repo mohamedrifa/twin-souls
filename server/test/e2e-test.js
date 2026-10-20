@@ -160,7 +160,7 @@ async function runTests() {
   console.log(`Test 9: Waiting ${Math.ceil(msRemaining / 1000)} seconds for server countdown deadline to finish...`);
   await new Promise(r => setTimeout(r, msRemaining + 500));
 
-  console.log('Calling /api/celebration/authorize-reveal...');
+  console.log('Calling /api/celebration/authorize-reveal for Kowsika...');
   const revealRes = await fetch(`${BASE_URL}/api/celebration/authorize-reveal`, {
     method: 'POST',
     headers: {
@@ -174,11 +174,25 @@ async function runTests() {
   assert.strictEqual(revealData.revealed, true);
   assert.strictEqual(revealData.sessionState.status, 'REVEALED');
   assert.ok(revealData.sessionState.gifts, 'Gifts must now be revealed');
-  assert.ok(revealData.sessionState.gifts.kowsalyaAppUrl, 'Kowsalya app URL revealed');
-  assert.ok(revealData.sessionState.gifts.kowsikaAppUrl, 'Kowsika app URL revealed');
-  console.log('🎁 Gift URLs successfully and safely authorized:');
-  console.log('   Salya Dance Academy:', revealData.sessionState.gifts.kowsalyaAppUrl);
-  console.log('   Shrinrityalaya:', revealData.sessionState.gifts.kowsikaAppUrl);
+  assert.ok(revealData.sessionState.gifts.kowsikaAppUrl, 'Kowsika app URL revealed to Kowsika');
+  assert.strictEqual(revealData.sessionState.gifts.kowsalyaAppUrl, undefined, 'Kowsalya app URL MUST NOT be visible to Kowsika!');
+
+  console.log('Calling /api/celebration/authorize-reveal for Kowsalya...');
+  const kowsalyaRevealRes = await fetch(`${BASE_URL}/api/celebration/authorize-reveal`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${kowsalyaToken}`
+    },
+    body: JSON.stringify({ sessionId: 'birthday-2026' })
+  });
+  const kowsalyaRevealData = await kowsalyaRevealRes.json();
+  assert.ok(kowsalyaRevealData.sessionState.gifts.kowsalyaAppUrl, 'Kowsalya app URL revealed to Kowsalya');
+  assert.strictEqual(kowsalyaRevealData.sessionState.gifts.kowsikaAppUrl, undefined, 'Kowsika app URL MUST NOT be visible to Kowsalya!');
+
+  console.log('🎁 Gift URLs strictly and privately isolated:');
+  console.log('   Salya Dance Academy (Kowsalya only):', kowsalyaRevealData.sessionState.gifts.kowsalyaAppUrl);
+  console.log('   Shrinrityalaya (Kowsika only):', revealData.sessionState.gifts.kowsikaAppUrl);
   console.log('\n🎉 ALL 9 END-TO-END TESTS PASSED FLAWLESSLY!\n');
 
   if (internalServer) {

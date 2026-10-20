@@ -122,14 +122,14 @@ export default function Countdown({ countdownEndsAt, clockOffset = 0, onComplete
         </div>
 
         <p className="font-script text-xl text-gold-light/90 italic mt-6 font-medium animate-float-slow">
-          “Two journeys. Two academies. One unforgettable celebration.”
+          “Two journeys. One unforgettable celebration.”
         </p>
       </div>
 
       {/* Footer Notice */}
       <div className="w-full text-center pb-2">
         <p className="text-[11px] text-roseGray">
-          ✨ Server-synchronized timer across Kowsalya & Kowsika's devices
+          ✨ Server-synchronized timer across Kausalya & Kaushika's devices
         </p>
       </div>
     </div>

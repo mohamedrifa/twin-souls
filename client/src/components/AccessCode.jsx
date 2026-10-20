@@ -56,7 +56,7 @@ export default function AccessCode({ onSubmitCode, isSubmitting, error, clearErr
               type="text"
               value={code}
               onChange={handleInputChange}
-              placeholder="e.g. SALYA2026 or SHRIN2026"
+              placeholder="CODE"
               autoComplete="off"
               autoCapitalize="characters"
               spellCheck="false"

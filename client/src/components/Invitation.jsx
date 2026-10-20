@@ -40,8 +40,7 @@ export default function Invitation({ onStart }) {
 
           <div className="space-y-3">
             <div className="p-2.5 rounded-xl bg-maroon-900/60 border border-gold/15">
-              <h2 className="font-regal text-lg font-bold text-ivory">Kowsalya</h2>
-              <p className="text-xs text-gold/90 font-medium tracking-wide">Salya's Dance Academy</p>
+              <h2 className="font-regal text-lg font-bold text-ivory">Kausalya</h2>
             </div>
 
             <div className="flex items-center justify-center gap-2 text-roseGray text-xs">
@@ -51,13 +50,12 @@ export default function Invitation({ onStart }) {
             </div>
 
             <div className="p-2.5 rounded-xl bg-maroon-900/60 border border-gold/15">
-              <h2 className="font-regal text-lg font-bold text-ivory">Kowsika</h2>
-              <p className="text-xs text-gold/90 font-medium tracking-wide">Shrinrityalaya</p>
+              <h2 className="font-regal text-lg font-bold text-ivory">Kaushika</h2>
             </div>
           </div>
 
           <p className="text-xs text-ivory/80 leading-relaxed mt-4 font-normal">
-            Two journeys. Two academies. One unforgettable birthday moment waiting for both of you to connect.
+            Two journeys. One unforgettable birthday moment waiting for both of you to connect.
           </p>
         </div>
       </div>
@@ -72,7 +70,7 @@ export default function Invitation({ onStart }) {
           <ChevronRight className="w-5 h-5 text-maroon-950 stroke-[2.5]" />
         </button>
         <p className="text-center text-[11px] text-roseGray mt-3">
-          Designed for Kowsalya & Kowsika on mobile devices
+          Designed for Kausalya & Kaushika on mobile devices
         </p>
       </div>
     </div>

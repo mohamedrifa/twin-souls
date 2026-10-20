@@ -101,7 +101,8 @@ export default function ReactionViewerModal({ isOpen, onClose, token }) {
                 </p>
                 {recordings.map((rec, index) => {
                   const isSelected = activeVideo === rec.fileKey;
-                  const sisterName = rec.participant === 'kowsalya' ? 'Kowsalya' : 'Kowsika';
+                  const isKow = rec.participant === 'kowsalya' || rec.participant === 'kausalya';
+                  const sisterName = isKow ? 'Kausalya' : 'Kaushika';
 
                   return (
                     <div

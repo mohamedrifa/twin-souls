@@ -35,7 +35,11 @@ const CelebrationSchema = new mongoose.Schema({
   },
   gifts: {
     kowsalyaAppUrl: { type: String, default: '' },
-    kowsikaAppUrl: { type: String, default: '' }
+    kowsalyaUsername: { type: String, default: '' },
+    kowsalyaPassword: { type: String, default: '' },
+    kowsikaAppUrl: { type: String, default: '' },
+    kowsikaUsername: { type: String, default: '' },
+    kowsikaPassword: { type: String, default: '' }
   }
 }, {
   timestamps: true

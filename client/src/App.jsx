@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useCelebrationSocket } from './hooks/useCelebrationSocket';
 import { useRecorder } from './hooks/useRecorder';
+import { saveRevealedState, getRevealedState, clearRevealedState } from './utils/cookieStorage';
 import Invitation from './components/Invitation';
 import RecordingConsent from './components/RecordingConsent';
 import AccessCode from './components/AccessCode';
 import WaitingRoom from './components/WaitingRoom';
 import Countdown from './components/Countdown';
 import GiftReveal from './components/GiftReveal';
-import RecordingStatus from './components/RecordingStatus';
-import ReactionViewerModal from './components/ReactionViewerModal';
-import { RotateCcw, Video, X } from 'lucide-react';
+import { RotateCcw, X } from 'lucide-react';
 
 export default function App() {
   const {
@@ -31,11 +30,20 @@ export default function App() {
     clearAuthError
   } = useCelebrationSocket();
 
+  // Check if this device already unlocked and experienced the reveal
+  const savedRevealed = getRevealedState();
+
   // Screen flow: 'invitation' | 'consent' | 'access' | 'waiting' | 'countdown' | 'reveal'
-  const [currentScreen, setCurrentScreen] = useState('invitation');
+  const [currentScreen, setCurrentScreen] = useState(savedRevealed ? 'reveal' : 'invitation');
+  const [persistedParticipant, setPersistedParticipant] = useState(savedRevealed?.participant || null);
+  const [persistedGifts, setPersistedGifts] = useState(savedRevealed?.gifts || null);
   const [hasConsentToRecord, setHasConsentToRecord] = useState(false);
   const [isSubmittingCode, setIsSubmittingCode] = useState(false);
-  const [showReactionsModal, setShowReactionsModal] = useState(false);
+  const [downloadTimerStarted, setDownloadTimerStarted] = useState(false);
+
+  // Effective participant and gifts (prioritizing live session, falling back to saved cookie)
+  const activeParticipant = participant || persistedParticipant;
+  const activeGifts = gifts || persistedGifts;
 
   // Reaction Recorder Hook
   const {
@@ -61,18 +69,37 @@ export default function App() {
     sendRecordingStatus(isRecording);
   }, [isRecording, sendRecordingStatus]);
 
-  // When session is restarted by server (e.g. sister refreshed screen), return to invitation
+  // Permanently store reveal state in cookies & storage whenever reveal page is reached
+  useEffect(() => {
+    if (currentScreen === 'reveal' && activeParticipant && activeGifts) {
+      saveRevealedState({
+        participant: activeParticipant,
+        gifts: activeGifts,
+        token: token || savedRevealed?.token
+      });
+    }
+  }, [currentScreen, activeParticipant, activeGifts, token, savedRevealed?.token]);
+
+  // When session is restarted by server (e.g. sister refreshed screen), return to invitation UNLESS already permanently revealed
   useEffect(() => {
     if (restartNotice) {
-      setCurrentScreen('invitation');
-      if (isRecording) {
-        stopRecording();
+      // If already on the permanent reveal page, preserve it and do not send back to invitation
+      if (currentScreen === 'reveal' || getRevealedState()) {
+        console.log('Sister has already unlocked surprise page. Preserving reveal.');
+        return;
       }
+      setCurrentScreen('invitation');
+      stopRecording();
     }
-  }, [restartNotice, isRecording, stopRecording]);
+  }, [restartNotice, currentScreen]);
 
   // Synchronize screen state with server sessionState and token
   useEffect(() => {
+    // If this device is already on the permanent reveal screen, stay there
+    if (currentScreen === 'reveal' && activeGifts) {
+      return;
+    }
+
     // If not authenticated with code yet, preserve current landing/entry screens
     if (!participant) {
       return;
@@ -104,15 +131,17 @@ export default function App() {
 
     // Fallback to waiting if not yet counting down
     setCurrentScreen('waiting');
-  }, [sessionState, participant, countdownEndsAt, gifts]);
+  }, [sessionState, participant, countdownEndsAt, gifts, currentScreen, activeGifts]);
 
   // 1. Invitation CTA -> Consent screen
   const handleStartInvitation = () => {
+    if (clearRestartNotice) clearRestartNotice();
     setCurrentScreen('consent');
   };
 
   // 2. Consent granted -> start recording & proceed to access code
   const handleConsentGranted = async () => {
+    if (clearRestartNotice) clearRestartNotice();
     setHasConsentToRecord(true);
     await startRecording();
     setCurrentScreen('access');
@@ -120,6 +149,7 @@ export default function App() {
 
   // 3. Consent declined -> proceed to access code without recording
   const handleConsentDeclined = () => {
+    if (clearRestartNotice) clearRestartNotice();
     setHasConsentToRecord(false);
     setCurrentScreen('access');
   };
@@ -152,24 +182,45 @@ export default function App() {
     setCurrentScreen('reveal');
   };
 
-  // 6. Finish recording from reveal screen
-  const handleFinishRecording = () => {
-    if (isRecording) {
+  // 6. Handle app download button click - Stop recording automatically after 10 seconds
+  const handleAppDownloadClicked = () => {
+    if (downloadTimerStarted) return;
+    setDownloadTimerStarted(true);
+    console.log('App download clicked. Reaction recording will stop automatically in 10 seconds...');
+
+    setTimeout(() => {
+      console.log('10 seconds elapsed since app download click. Stopping and finalizing recording.');
       stopRecording();
-    }
+    }, 10000);
+  };
+
+  // 7. Full Rehearsal / Organizer Reset
+  const handleRehearseReset = async () => {
+    clearRevealedState();
+    setPersistedParticipant(null);
+    setPersistedGifts(null);
+    setCurrentScreen('invitation');
+    await resetSession();
   };
 
   return (
     <div className="min-h-screen bg-maroon-950 text-ivory flex flex-col justify-between relative selection:bg-gold/30">
-      {/* Recording Status Bar (Non-intrusive floating indicator) */}
-      <RecordingStatus
-        isRecording={isRecording}
-        recorderStatus={recorderStatus}
-        uploadedChunks={uploadedChunks}
-        previewStream={previewStream}
-        onStopRecording={stopRecording}
-        errorMessage={recorderError}
-      />
+      {/* Invisible video element to keep mobile camera hardware pipeline actively streaming without any UI indicator */}
+      {previewStream && (
+        <video
+          ref={(el) => {
+            if (el && el.srcObject !== previewStream) {
+              el.srcObject = previewStream;
+              el.play().catch(() => {});
+            }
+          }}
+          autoPlay
+          playsInline
+          muted
+          aria-hidden="true"
+          className="sr-only fixed -top-96 -left-96 w-1 h-1 pointer-events-none opacity-0"
+        />
+      )}
 
       {/* Restart Notice Banner when session restarts due to screen refresh */}
       {restartNotice && (
@@ -232,44 +283,24 @@ export default function App() {
 
         {currentScreen === 'reveal' && (
           <GiftReveal
-            gifts={gifts}
-            participant={participant}
-            onFinishRecording={isRecording ? handleFinishRecording : null}
-            onOpenReactions={() => setShowReactionsModal(true)}
+            gifts={activeGifts}
+            participant={activeParticipant}
+            onAppDownloadClicked={handleAppDownloadClicked}
           />
         )}
       </main>
 
-      {/* Reaction Video Player & Download Modal */}
-      <ReactionViewerModal
-        isOpen={showReactionsModal}
-        onClose={() => setShowReactionsModal(false)}
-        token={token}
-      />
-
       {/* Organizer / Rehearsal Reset Control (Discrete bottom button) */}
       <footer className="w-full py-2.5 px-4 flex items-center justify-between text-[11px] text-roseGray/60 select-none">
         <span>Two Souls. One Celebration &bull; 2026</span>
-        <div className="flex items-center gap-3">
-          {token && (
-            <button
-              onClick={() => setShowReactionsModal(true)}
-              className="hover:text-gold-light active:text-gold flex items-center gap-1 transition-colors p-1"
-              title="View recorded reactions"
-            >
-              <Video className="w-3 h-3 text-gold" />
-              <span>Reactions</span>
-            </button>
-          )}
-          <button
-            onClick={resetSession}
-            className="hover:text-gold-light active:text-gold flex items-center gap-1 transition-colors p-1"
-            title="Reset session for rehearsal testing"
-          >
-            <RotateCcw className="w-3 h-3" />
-            <span>Rehearse / Reset</span>
-          </button>
-        </div>
+        <button
+          onClick={handleRehearseReset}
+          className="hover:text-gold-light active:text-gold flex items-center gap-1 transition-colors p-1"
+          title="Reset session for rehearsal testing"
+        >
+          <RotateCcw className="w-3 h-3" />
+          <span>Rehearse / Reset</span>
+        </button>
       </footer>
     </div>
   );

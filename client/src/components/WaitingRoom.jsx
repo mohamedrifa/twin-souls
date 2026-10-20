@@ -6,7 +6,8 @@ import { Wifi, Sparkles, HeartHandshake, Loader2 } from 'lucide-react';
 export default function WaitingRoom({ participant, waitingSister, connected }) {
   const myName = participant?.displayName || 'Sister';
   const myAcademy = participant?.academy || '';
-  const sister = waitingSister || (participant?.participant === 'kowsalya' ? 'Kowsika' : 'Kowsalya');
+  const isKow = participant?.participant === 'kowsalya' || participant?.participant === 'kausalya';
+  const sister = waitingSister || (isKow ? 'Kaushika' : 'Kausalya');
 
   return (
     <div className="w-full max-w-md mx-auto px-5 py-6 flex flex-col items-center justify-between min-h-[90vh]">

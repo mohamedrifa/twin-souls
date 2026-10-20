@@ -2,22 +2,23 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 
 const API_URL = import.meta.env.VITE_API_URL || window.location.origin.replace(':5173', ':5000');
 
-// Pick best supported video mime type (prefer MP4 / H.264 for universal compatibility)
+// Pick best supported video mime type (rock-solid WebM for Chrome/Android/PC, native MP4 for iOS/Safari)
 function getSupportedMimeType() {
   if (typeof MediaRecorder === 'undefined') return '';
   const types = [
-    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
-    'video/mp4;codecs=avc1',
-    'video/mp4',
-    'video/webm;codecs=h264,opus',
+    'video/webm',
     'video/webm;codecs=vp9,opus',
     'video/webm;codecs=vp8,opus',
-    'video/webm'
+    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+    'video/mp4;codecs=avc1',
+    'video/mp4'
   ];
   for (const t of types) {
-    if (MediaRecorder.isTypeSupported(t)) {
-      return t;
-    }
+    try {
+      if (MediaRecorder.isTypeSupported(t)) {
+        return t;
+      }
+    } catch (e) {}
   }
   return '';
 }
@@ -158,10 +159,22 @@ export function useRecorder({ token, onChunkUploaded, onFinalized }) {
       streamRef.current = stream;
       setPreviewStream(stream);
 
-      const recorder = new MediaRecorder(stream, {
-        mimeType,
-        videoBitsPerSecond: 600000 // 600kbps efficient profile
-      });
+      // Retain globally to prevent browser garbage collection
+      if (typeof window !== 'undefined') {
+        window.__twinStream = stream;
+      }
+
+      let recorder = null;
+      try {
+        recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      } catch (mimeErr) {
+        console.warn(`MediaRecorder init failed with ${mimeType}, falling back to browser default:`, mimeErr);
+        recorder = new MediaRecorder(stream);
+      }
+
+      if (typeof window !== 'undefined') {
+        window.__twinRecorder = recorder;
+      }
 
       recorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
@@ -173,8 +186,7 @@ export function useRecorder({ token, onChunkUploaded, onFinalized }) {
 
       recorder.onerror = (e) => {
         console.error('MediaRecorder error:', e);
-        setRecorderStatus('error');
-        setErrorMessage('Recording encountered a technical glitch.');
+        // Do not force kill tracks on non-fatal events
       };
 
       recorder.onstop = async () => {
@@ -188,7 +200,13 @@ export function useRecorder({ token, onChunkUploaded, onFinalized }) {
       };
 
       // Record in 4-second segments for smooth low-risk chunking
-      recorder.start(4000);
+      try {
+        recorder.start(4000);
+      } catch (startErr) {
+        console.warn('recorder.start with timeslice failed, trying start():', startErr);
+        recorder.start();
+      }
+
       mediaRecorderRef.current = recorder;
       setIsRecording(true);
       setRecorderStatus('recording');
@@ -252,12 +270,16 @@ export function useRecorder({ token, onChunkUploaded, onFinalized }) {
     }
   };
 
-  // Cleanup on unmount
+  // Cleanup when window unloads permanently
   useEffect(() => {
-    return () => {
+    const handleUnload = () => {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(t => t.stop());
       }
+    };
+    window.addEventListener('beforeunload', handleUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleUnload);
     };
   }, []);
 

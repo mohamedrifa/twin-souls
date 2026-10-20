@@ -33,9 +33,10 @@ function setupCelebrationHandlers(io) {
           const verified = verifyParticipantToken(token);
           if (verified) {
             participant = verified.participant;
-            displayName = participant === 'kowsalya' ? 'Kowsalya' : 'Kowsika';
-            academy = participant === 'kowsalya' ? "Salya's Dance Academy" : 'Shrinrityalaya';
-            twinName = participant === 'kowsalya' ? 'Kowsika' : 'Kowsalya';
+            const isKow = participant === 'kowsalya' || participant === 'kausalya';
+            displayName = isKow ? 'Kausalya' : 'Kaushika';
+            academy = isKow ? "Salya's Dance Academy" : 'Shrinrityalaya';
+            twinName = isKow ? 'Kaushika' : 'Kausalya';
           }
         }
 
@@ -168,14 +169,7 @@ function setupCelebrationHandlers(io) {
     // Handle client countdown completion ping (verifies server authority)
     socket.on('countdown_complete', async () => {
       try {
-        const session = await checkAndAuthorizeReveal(currentSessionId);
-        if (session && session.status === 'REVEALED') {
-          const clientState = serializeClientState(session, currentParticipant);
-          io.to(getRoomName(currentSessionId)).emit('gift_revealed', {
-            revealedAt: clientState.revealedAt,
-            gifts: clientState.gifts
-          });
-        }
+        await emitPersonalizedReveal(io, currentSessionId);
       } catch (err) {
         console.error('Error handling countdown_complete:', err);
       }
@@ -195,27 +189,65 @@ function setupCelebrationHandlers(io) {
     socket.on('disconnect', async () => {
       // If an authenticated participant refreshes or closes the page, restart celebration for both
       if (currentParticipant && mongoose.connection.readyState === 1) {
-        console.log(`Participant ${currentParticipant} disconnected/refreshed. Resetting celebration for both...`);
-        
-        // Cancel any pending countdown timer
-        if (activeTimers.has(currentSessionId)) {
-          clearTimeout(activeTimers.get(currentSessionId));
-          activeTimers.delete(currentSessionId);
-        }
+        // Wait 1.5s to verify if this is an actual disconnect/refresh vs transport upgrade or reconnect
+        setTimeout(async () => {
+          try {
+            if (mongoose.connection.readyState !== 1) {
+              return;
+            }
+            const roomName = getRoomName(currentSessionId);
+            const sockets = await io.in(roomName).fetchSockets();
+            const isStillPresent = sockets.some(s => s.participant === currentParticipant);
+            if (isStillPresent) {
+              console.log(`Participant ${currentParticipant} still has active socket. No restart needed.`);
+              return;
+            }
 
-        // Reset database state back to WAITING
-        await resetSessionState(currentSessionId);
+            console.log(`Participant ${currentParticipant} disconnected/refreshed. Resetting celebration for both...`);
+            
+            // Cancel any pending countdown timer
+            if (activeTimers.has(currentSessionId)) {
+              clearTimeout(activeTimers.get(currentSessionId));
+              activeTimers.delete(currentSessionId);
+            }
 
-        const sisterName = currentParticipant === 'kowsalya' ? 'Kowsalya' : 'Kowsika';
-        
-        // Broadcast to both that session has restarted
-        io.to(getRoomName(currentSessionId)).emit('session_restarted', {
-          participant: currentParticipant,
-          message: `${sisterName}'s screen was refreshed or disconnected. Restarting the celebration for both of you so you can experience it together!`
-        });
+            // Reset database state back to WAITING
+            await resetSessionState(currentSessionId);
+
+            const isKow = currentParticipant === 'kowsalya' || currentParticipant === 'kausalya';
+            const sisterName = isKow ? 'Kausalya' : 'Kaushika';
+            
+            // Broadcast to both that session has restarted
+            io.to(roomName).emit('session_restarted', {
+              participant: currentParticipant,
+              message: `${sisterName}'s screen was refreshed or disconnected. Restarting the celebration for both of you so you can experience it together!`
+            });
+          } catch (err) {
+            console.error('Error in disconnect handler:', err);
+          }
+        }, 1500);
       }
     });
   });
+}
+
+// Emit personalized gifts strictly separated to each sister's socket
+async function emitPersonalizedReveal(io, sessionId) {
+  const session = await checkAndAuthorizeReveal(sessionId);
+  if (!session || session.status !== 'REVEALED') return;
+
+  const roomName = `celebration-${sessionId}`;
+  const sockets = await io.in(roomName).fetchSockets();
+
+  for (const s of sockets) {
+    const p = s.participant;
+    const pState = serializeClientState(session, p);
+    s.emit('gift_revealed', {
+      revealedAt: pState.revealedAt || Date.now(),
+      gifts: pState.gifts
+    });
+    s.emit('session_state', pState);
+  }
 }
 
 // Ensure server automatically broadcasts gift_revealed exactly when deadline finishes
@@ -227,15 +259,7 @@ function scheduleServerReveal(io, sessionId, delayMs) {
   const timer = setTimeout(async () => {
     try {
       activeTimers.delete(sessionId);
-      const session = await checkAndAuthorizeReveal(sessionId);
-      if (session && session.status === 'REVEALED') {
-        const clientState = serializeClientState(session, null);
-        io.to(`celebration-${sessionId}`).emit('gift_revealed', {
-          revealedAt: clientState.revealedAt || Date.now(),
-          gifts: clientState.gifts
-        });
-        io.to(`celebration-${sessionId}`).emit('session_state', clientState);
-      }
+      await emitPersonalizedReveal(io, sessionId);
     } catch (err) {
       console.error('Error in scheduled server reveal:', err);
     }

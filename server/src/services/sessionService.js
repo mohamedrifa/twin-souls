@@ -17,26 +17,36 @@ function safeCompare(a, b) {
 
 // Map access code to participant identity
 function verifyAccessCode(inputCode) {
-  const kowsalyaCode = process.env.KOWSALYA_CODE || 'SALYA2026';
-  const kowsikaCode = process.env.KOWSIKA_CODE || 'SHRIN2026';
+  const kowsalyaEnvCode = process.env.KOWSALYA_CODE || 'SALYA2026';
+  const kowsikaEnvCode = process.env.KOWSIKA_CODE || 'SHRIN2026';
 
-  if (safeCompare(inputCode, kowsalyaCode)) {
+  const isKausalya = safeCompare(inputCode, kowsalyaEnvCode) ||
+                     safeCompare(inputCode, 'SALYA2026') ||
+                     safeCompare(inputCode, 'KAUSALYA2026') ||
+                     safeCompare(inputCode, 'KOWSALYA2026');
+
+  if (isKausalya) {
     return {
       valid: true,
       participant: 'kowsalya',
-      displayName: 'Kowsalya',
+      displayName: 'Kausalya',
       academy: "Salya's Dance Academy",
-      twinName: 'Kowsika'
+      twinName: 'Kaushika'
     };
   }
 
-  if (safeCompare(inputCode, kowsikaCode)) {
+  const isKaushika = safeCompare(inputCode, kowsikaEnvCode) ||
+                     safeCompare(inputCode, 'SHRIN2026') ||
+                     safeCompare(inputCode, 'KAUSHIKA2026') ||
+                     safeCompare(inputCode, 'KOWSIKA2026');
+
+  if (isKaushika) {
     return {
       valid: true,
       participant: 'kowsika',
-      displayName: 'Kowsika',
+      displayName: 'Kaushika',
       academy: 'Shrinrityalaya',
-      twinName: 'Kowsalya'
+      twinName: 'Kausalya'
     };
   }
 
@@ -45,6 +55,14 @@ function verifyAccessCode(inputCode) {
 
 // Get or initialize celebration session
 async function getOrCreateSession(sessionId = DEFAULT_SESSION_ID) {
+  const currentKowsalyaUrl = process.env.KOWSALYA_APP_URL || 'https://github.com/mohamedrifa/Salya-s-Dance-Academy/releases/download/Mobile_App/Salya.s.Academy.apk';
+  const currentKowsalyaUsername = process.env.KOWSALYA_APP_USERNAME || 'teacher@salyasacademy.com';
+  const currentKowsalyaPassword = process.env.KOWSALYA_APP_PASSWORD || 'Teacher123!';
+
+  const currentKowsikaUrl = process.env.KOWSIKA_APP_URL || 'https://github.com/mohamedrifa/ShriNrityalaya/releases/download/Mobile_App/shrinrityalaya.apk';
+  const currentKowsikaUsername = process.env.KOWSIKA_APP_USERNAME || 'teacher@shrinrityalaya.com';
+  const currentKowsikaPassword = process.env.KOWSIKA_APP_PASSWORD || 'Teacher@123!';
+
   let session = await Celebration.findOne({ sessionId });
   if (!session) {
     session = await Celebration.create({
@@ -55,10 +73,25 @@ async function getOrCreateSession(sessionId = DEFAULT_SESSION_ID) {
         kowsika: { joined: false }
       },
       gifts: {
-        kowsalyaAppUrl: process.env.KOWSALYA_APP_URL || 'https://salyasdance.app/release',
-        kowsikaAppUrl: process.env.KOWSIKA_APP_URL || 'https://shrinrityalaya.app/release'
+        kowsalyaAppUrl: currentKowsalyaUrl,
+        kowsalyaUsername: currentKowsalyaUsername,
+        kowsalyaPassword: currentKowsalyaPassword,
+        kowsikaAppUrl: currentKowsikaUrl,
+        kowsikaUsername: currentKowsikaUsername,
+        kowsikaPassword: currentKowsikaPassword
       }
     });
+  } else {
+    // Keep stored gifts synchronized with environment configuration
+    session.gifts = {
+      kowsalyaAppUrl: currentKowsalyaUrl,
+      kowsalyaUsername: currentKowsalyaUsername,
+      kowsalyaPassword: currentKowsalyaPassword,
+      kowsikaAppUrl: currentKowsikaUrl,
+      kowsikaUsername: currentKowsikaUsername,
+      kowsikaPassword: currentKowsikaPassword
+    };
+    await session.save();
   }
   return session;
 }
@@ -205,12 +238,12 @@ function serializeClientState(session, currentParticipant) {
     participants: {
       kowsalya: {
         joined: kowsalyaJoined,
-        name: 'Kowsalya',
+        name: 'Kausalya',
         academy: "Salya's Dance Academy"
       },
       kowsika: {
         joined: kowsikaJoined,
-        name: 'Kowsika',
+        name: 'Kaushika',
         academy: 'Shrinrityalaya'
       }
     },
@@ -218,11 +251,34 @@ function serializeClientState(session, currentParticipant) {
   };
 
   // Only provide app gift URLs if server-authorized countdown has finished AND both joined
+  // Strictly isolate gifts so each sister receives ONLY her own gift!
   if (isRevealed) {
-    clientPayload.gifts = {
-      kowsalyaAppUrl: session.gifts?.kowsalyaAppUrl || process.env.KOWSALYA_APP_URL || 'https://salyasdance.app/release',
-      kowsikaAppUrl: session.gifts?.kowsikaAppUrl || process.env.KOWSIKA_APP_URL || 'https://shrinrityalaya.app/release'
-    };
+    const kowsalyaUrl = process.env.KOWSALYA_APP_URL || session.gifts?.kowsalyaAppUrl || 'https://github.com/mohamedrifa/Salya-s-Dance-Academy/releases/download/Mobile_App/Salya.s.Academy.apk';
+    const kowsalyaUsername = process.env.KOWSALYA_APP_USERNAME || session.gifts?.kowsalyaUsername || 'teacher@salyasacademy.com';
+    const kowsalyaPassword = process.env.KOWSALYA_APP_PASSWORD || session.gifts?.kowsalyaPassword || 'Teacher123!';
+
+    const kowsikaUrl = process.env.KOWSIKA_APP_URL || session.gifts?.kowsikaAppUrl || 'https://github.com/mohamedrifa/ShriNrityalaya/releases/download/Mobile_App/shrinrityalaya.apk';
+    const kowsikaUsername = process.env.KOWSIKA_APP_USERNAME || session.gifts?.kowsikaUsername || 'teacher@shrinrityalaya.com';
+    const kowsikaPassword = process.env.KOWSIKA_APP_PASSWORD || session.gifts?.kowsikaPassword || 'Teacher@123!';
+
+    clientPayload.gifts = {};
+    if (currentParticipant === 'kowsalya') {
+      clientPayload.gifts.kowsalyaAppUrl = kowsalyaUrl;
+      clientPayload.gifts.username = kowsalyaUsername;
+      clientPayload.gifts.password = kowsalyaPassword;
+    } else if (currentParticipant === 'kowsika') {
+      clientPayload.gifts.kowsikaAppUrl = kowsikaUrl;
+      clientPayload.gifts.username = kowsikaUsername;
+      clientPayload.gifts.password = kowsikaPassword;
+    } else {
+      // Admin / unauthenticated fallback
+      clientPayload.gifts.kowsalyaAppUrl = kowsalyaUrl;
+      clientPayload.gifts.kowsalyaUsername = kowsalyaUsername;
+      clientPayload.gifts.kowsalyaPassword = kowsalyaPassword;
+      clientPayload.gifts.kowsikaAppUrl = kowsikaUrl;
+      clientPayload.gifts.kowsikaUsername = kowsikaUsername;
+      clientPayload.gifts.kowsikaPassword = kowsikaPassword;
+    }
   }
 
   return clientPayload;
@@ -230,11 +286,27 @@ function serializeClientState(session, currentParticipant) {
 
 // Reset session state completely back to initial WAITING state
 async function resetSessionState(sessionId = DEFAULT_SESSION_ID) {
+  const currentKowsalyaUrl = process.env.KOWSALYA_APP_URL || 'https://github.com/mohamedrifa/Salya-s-Dance-Academy/releases/download/Mobile_App/Salya.s.Academy.apk';
+  const currentKowsalyaUsername = process.env.KOWSALYA_APP_USERNAME || 'teacher@salyasacademy.com';
+  const currentKowsalyaPassword = process.env.KOWSALYA_APP_PASSWORD || 'Teacher123!';
+
+  const currentKowsikaUrl = process.env.KOWSIKA_APP_URL || 'https://github.com/mohamedrifa/ShriNrityalaya/releases/download/Mobile_App/shrinrityalaya.apk';
+  const currentKowsikaUsername = process.env.KOWSIKA_APP_USERNAME || 'teacher@shrinrityalaya.com';
+  const currentKowsikaPassword = process.env.KOWSIKA_APP_PASSWORD || 'Teacher@123!';
+
   const resetData = {
     status: 'WAITING',
     participants: {
       kowsalya: { joined: false, socketId: null, joinedAt: null, consentToRecord: false },
       kowsika: { joined: false, socketId: null, joinedAt: null, consentToRecord: false }
+    },
+    gifts: {
+      kowsalyaAppUrl: currentKowsalyaUrl,
+      kowsalyaUsername: currentKowsalyaUsername,
+      kowsalyaPassword: currentKowsalyaPassword,
+      kowsikaAppUrl: currentKowsikaUrl,
+      kowsikaUsername: currentKowsikaUsername,
+      kowsikaPassword: currentKowsikaPassword
     },
     countdownEndsAt: null,
     revealedAt: null

@@ -132,8 +132,8 @@ router.post('/reset', async (req, res) => {
       io.to(`celebration-${sessionId}`).emit('session_state', {
         status: 'WAITING',
         participants: {
-          kowsalya: { joined: false, name: 'Kowsalya' },
-          kowsika: { joined: false, name: 'Kowsika' }
+          kowsalya: { joined: false, name: 'Kausalya' },
+          kowsika: { joined: false, name: 'Kaushika' }
         },
         bothJoined: false,
         countdownEndsAt: null

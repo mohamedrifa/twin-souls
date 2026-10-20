@@ -1,7 +1,7 @@
 {
   "name": "two-souls-one-celebration",
   "version": "1.0.0",
-  "description": "Production-minded birthday surprise website for twin sisters Kowsalya & Kowsika",
+  "description": "Production-minded birthday surprise website for twin sisters Kausalya & Kaushika",
   "scripts": {
     "server": "npm --prefix server start",
     "server:dev": "npm --prefix server run dev",

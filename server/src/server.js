@@ -45,10 +45,10 @@ async function startServer() {
       console.log(`====================================================`);
       console.log(`✨ Two Souls. One Celebration Server is Running!`);
       console.log(`🚀 Port: ${PORT}`);
-      console.log(`🔒 Kowsalya Code: ${process.env.KOWSALYA_CODE || 'SALYA2026'}`);
-      console.log(`🔒 Kowsika Code: ${process.env.KOWSIKA_CODE || 'SHRIN2026'}`);
-      console.log(`🎁 Kowsalya App: ${process.env.KOWSALYA_APP_URL || 'Configured'}`);
-      console.log(`🎁 Kowsika App: ${process.env.KOWSIKA_APP_URL || 'Configured'}`);
+      console.log(`🔒 Kausalya Code: ${process.env.KOWSALYA_CODE || 'SALYA2026'}`);
+      console.log(`🔒 Kaushika Code: ${process.env.KOWSIKA_CODE || 'SHRIN2026'}`);
+      console.log(`🎁 Kausalya App: ${process.env.KOWSALYA_APP_URL || 'Configured'}`);
+      console.log(`🎁 Kaushika App: ${process.env.KOWSIKA_APP_URL || 'Configured'}`);
       console.log(`====================================================`);
     });
 
