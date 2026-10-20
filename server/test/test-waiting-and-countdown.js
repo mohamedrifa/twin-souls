@@ -39,8 +39,8 @@ async function testWaitingAndCountdownFlow() {
   let kowsalyaWaitingEventReceived = false;
   socketKowsalya.on('waiting_for_twin', (data) => {
     kowsalyaWaitingEventReceived = true;
-    assert.strictEqual(data.sisterName, 'Kowsika');
-    console.log('✅ Kowsalya received waiting_for_twin event: waiting for Kowsika');
+    assert.strictEqual(data.sisterName, 'Kaushika');
+    console.log('✅ Kausalya received waiting_for_twin event: waiting for Kaushika');
   });
 
   const kowsalyaJoinRes = await new Promise(resolve => {

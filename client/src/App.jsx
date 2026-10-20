@@ -96,7 +96,7 @@ export default function App() {
   // Synchronize screen state with server sessionState and token
   useEffect(() => {
     // If this device is already on the permanent reveal screen, stay there
-    if (currentScreen === 'reveal' && activeGifts) {
+    if (currentScreen === 'reveal') {
       return;
     }
 
@@ -105,25 +105,21 @@ export default function App() {
       return;
     }
 
-    // 1. If countdown deadline is set and active -> SHOW COUNTDOWN!
-    if (countdownEndsAt && countdownEndsAt > Date.now()) {
-      setCurrentScreen('countdown');
-      return;
-    }
+    const isCountdownFinished = countdownEndsAt && (countdownEndsAt <= (Date.now() + clockOffset));
 
-    // 2. If countdown has completed and status is REVEALED -> SHOW REVEAL!
-    if (sessionState?.bothJoined && sessionState?.status === 'REVEALED' && (gifts || sessionState?.gifts)) {
+    // 1. If both sisters joined and countdown deadline has completed or status is REVEALED -> SHOW REVEAL!
+    if (sessionState?.bothJoined && (sessionState?.status === 'REVEALED' || isCountdownFinished)) {
       setCurrentScreen('reveal');
       return;
     }
 
-    // 3. If session status is COUNTDOWN
-    if (sessionState?.status === 'COUNTDOWN') {
+    // 2. If countdown deadline is set and still running in the future -> SHOW COUNTDOWN!
+    if (countdownEndsAt && (countdownEndsAt > (Date.now() + clockOffset)) && sessionState?.status === 'COUNTDOWN') {
       setCurrentScreen('countdown');
       return;
     }
 
-    // 4. If only one sister has joined -> STRICTLY STAY IN WAITING ROOM!
+    // 3. If only one sister has joined -> STRICTLY STAY IN WAITING ROOM!
     if (!sessionState?.bothJoined) {
       setCurrentScreen('waiting');
       return;
@@ -131,7 +127,7 @@ export default function App() {
 
     // Fallback to waiting if not yet counting down
     setCurrentScreen('waiting');
-  }, [sessionState, participant, countdownEndsAt, gifts, currentScreen, activeGifts]);
+  }, [sessionState, participant, countdownEndsAt, gifts, currentScreen, activeGifts, clockOffset]);
 
   // 1. Invitation CTA -> Consent screen
   const handleStartInvitation = () => {
@@ -199,13 +195,13 @@ export default function App() {
     stopRecording();
   };
 
-  // Trigger 1: Auto-stop 30 seconds after Surprise Unveiled page appears
+  // Trigger 1: Auto-stop 20 seconds after Surprise Unveiled page appears
   useEffect(() => {
     if (currentScreen === 'reveal' && isRecording && !hasFinishedRecordingRef.current) {
-      console.log('Surprise Unveiled page reached. 30-second auto-stop timer started...');
+      console.log('Surprise Unveiled page reached. 20-second auto-stop timer started...');
       pageTimerRef.current = setTimeout(() => {
-        triggerStopRecording('30 seconds elapsed on Surprise page');
-      }, 30000);
+        triggerStopRecording('20 seconds elapsed on Surprise page');
+      }, 20000);
 
       return () => {
         if (pageTimerRef.current) {
@@ -215,11 +211,11 @@ export default function App() {
     }
   }, [currentScreen, isRecording]);
 
-  // Trigger 2: 10 seconds after clicking "Unlock & Download App" button (or 30s timer, whichever is first)
+  // Trigger 2: 10 seconds after clicking "Unlock & Download App" button (or 20s timer, whichever is first)
   const handleAppDownloadClicked = () => {
     if (downloadTimerStarted || hasFinishedRecordingRef.current || !isRecording) return;
     setDownloadTimerStarted(true);
-    console.log('App download clicked. Scheduling stop in 10 seconds (or when 30s page limit expires)...');
+    console.log('App download clicked. Scheduling stop in 10 seconds (or when 20s page limit expires)...');
 
     downloadTimerRef.current = setTimeout(() => {
       triggerStopRecording('10 seconds elapsed after app download click');

@@ -75,8 +75,8 @@ async function runTests() {
   const kowsalyaData = await kowsalyaRes.json();
   assert.strictEqual(kowsalyaData.success, true);
   assert.strictEqual(kowsalyaData.participant, 'kowsalya');
-  assert.strictEqual(kowsalyaData.displayName, 'Kowsalya');
-  assert.strictEqual(kowsalyaData.twinName, 'Kowsika');
+  assert.strictEqual(kowsalyaData.displayName, 'Kausalya');
+  assert.strictEqual(kowsalyaData.twinName, 'Kaushika');
   assert.strictEqual(kowsalyaData.sessionState.status, 'WAITING');
   assert.strictEqual(kowsalyaData.sessionState.gifts, undefined, 'Gifts MUST NOT be exposed during WAITING');
   const kowsalyaToken = kowsalyaData.token;
@@ -104,7 +104,7 @@ async function runTests() {
   const kowsikaData = await kowsikaRes.json();
   assert.strictEqual(kowsikaData.success, true);
   assert.strictEqual(kowsikaData.participant, 'kowsika');
-  assert.strictEqual(kowsikaData.displayName, 'Kowsika');
+  assert.strictEqual(kowsikaData.displayName, 'Kaushika');
   assert.strictEqual(kowsikaData.sessionState.status, 'COUNTDOWN');
   assert.ok(kowsikaData.sessionState.countdownEndsAt, 'countdownEndsAt must be populated');
   assert.strictEqual(kowsikaData.sessionState.gifts, undefined, 'Gifts MUST NOT be exposed during COUNTDOWN');

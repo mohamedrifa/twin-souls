@@ -205,6 +205,14 @@ function setupCelebrationHandlers(io) {
 
             console.log(`Participant ${currentParticipant} disconnected/refreshed. Resetting celebration for both...`);
             
+            // Auto-finalize any unfinished recording for this participant so no raw .webm is left behind
+            try {
+              const { finalizeRecording } = require('../services/recordingStorage');
+              await finalizeRecording({ sessionId: currentSessionId, participant: currentParticipant });
+            } catch (finErr) {
+              console.warn('Auto-finalize on disconnect failed:', finErr.message);
+            }
+
             // Cancel any pending countdown timer
             if (activeTimers.has(currentSessionId)) {
               clearTimeout(activeTimers.get(currentSessionId));
@@ -259,9 +267,13 @@ function scheduleServerReveal(io, sessionId, delayMs) {
   const timer = setTimeout(async () => {
     try {
       activeTimers.delete(sessionId);
-      await emitPersonalizedReveal(io, sessionId);
+      if (mongoose.connection.readyState === 1) {
+        await emitPersonalizedReveal(io, sessionId);
+      }
     } catch (err) {
-      console.error('Error in scheduled server reveal:', err);
+      if (mongoose.connection.readyState === 1) {
+        console.error('Error in scheduled server reveal:', err);
+      }
     }
   }, Math.max(50, delayMs));
 

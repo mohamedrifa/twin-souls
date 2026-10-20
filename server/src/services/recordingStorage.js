@@ -90,29 +90,23 @@ async function appendVideoChunk({ sessionId, participant, chunkBuffer, mimeType 
   };
 }
 
+function getFFmpegExecutable() {
+  if (ffmpegPath && fs.existsSync(ffmpegPath)) {
+    try {
+      fs.chmodSync(ffmpegPath, 0o755);
+    } catch (e) {}
+    return ffmpegPath;
+  }
+  return 'ffmpeg';
+}
+
 // Convert video to universally playable standard MP4 (H.264 + AAC + faststart)
 async function convertToUniversalMp4(inputPath, outputFileKey) {
-  if (!ffmpegPath) {
-    console.warn('FFmpeg binary not available; skipping transcode.');
-    return null;
-  }
-
+  const binary = getFFmpegExecutable();
   const outputPath = path.join(RECORDINGS_BASE_DIR, outputFileKey);
 
-  try {
-    console.log(`Starting conversion to universal MP4: ${inputPath} -> ${outputPath}`);
-    
-    // FFmpeg arguments for crystal-clear HD MP4:
-    // -y: overwrite
-    // -i inputPath: input video file
-    // -c:v libx264: encode to universally compatible H.264
-    // -crf 20: crisp, high-definition clear video quality
-    // -preset fast: clean balance of quality and encoding efficiency
-    // -pix_fmt yuv420p: critical for Windows Media Player & iOS/QuickTime universal playback
-    // -c:a aac: universal AAC audio
-    // -b:a 128k: audio bitrate
-    // -movflags +faststart: relocate moov atom to beginning of MP4 for instant streaming & seeking
-    await execFileAsync(ffmpegPath, [
+  const runTranscode = async (bin) => {
+    await execFileAsync(bin, [
       '-y',
       '-i', inputPath,
       '-c:v', 'libx264',
@@ -124,25 +118,36 @@ async function convertToUniversalMp4(inputPath, outputFileKey) {
       '-movflags', '+faststart',
       outputPath
     ]);
+  };
 
-    if (fs.existsSync(outputPath)) {
-      const stats = fs.statSync(outputPath);
-      console.log(`Successfully converted to universal MP4 (${stats.size} bytes): ${outputFileKey}`);
-
-      // Delete raw input file (e.g. .webm) so ONLY the final .mp4 is stored in the folder!
-      if (inputPath !== outputPath && fs.existsSync(inputPath)) {
-        try {
-          fs.unlinkSync(inputPath);
-          console.log(`Removed raw temporary recording file: ${path.basename(inputPath)}`);
-        } catch (unlinkErr) {
-          console.warn('Could not delete raw input file:', unlinkErr.message);
-        }
-      }
-
-      return { mp4FileKey: outputFileKey, mp4FilePath: outputPath };
-    }
+  try {
+    console.log(`Starting conversion to universal MP4: ${inputPath} -> ${outputPath}`);
+    await runTranscode(binary);
   } catch (err) {
-    console.error('Error during MP4 transcode:', err.message);
+    console.warn(`Primary transcode failed with ${binary}: ${err.message}. Retrying with system 'ffmpeg'...`);
+    try {
+      await runTranscode('ffmpeg');
+    } catch (fallbackErr) {
+      console.error('All ffmpeg transcode attempts failed:', fallbackErr.message);
+      return null;
+    }
+  }
+
+  if (fs.existsSync(outputPath)) {
+    const stats = fs.statSync(outputPath);
+    console.log(`Successfully converted to universal MP4 (${stats.size} bytes): ${outputFileKey}`);
+
+    // Delete raw input file (e.g. .webm) so ONLY the final .mp4 is stored in the folder!
+    if (inputPath !== outputPath && fs.existsSync(inputPath)) {
+      try {
+        fs.unlinkSync(inputPath);
+        console.log(`Removed raw temporary recording file: ${path.basename(inputPath)}`);
+      } catch (unlinkErr) {
+        console.warn('Could not delete raw input file:', unlinkErr.message);
+      }
+    }
+
+    return { mp4FileKey: outputFileKey, mp4FilePath: outputPath };
   }
 
   return null;

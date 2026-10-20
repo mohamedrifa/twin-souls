@@ -187,7 +187,8 @@ async function checkAndAuthorizeReveal(sessionId = DEFAULT_SESSION_ID) {
   if (session.status === 'COUNTDOWN' && session.countdownEndsAt) {
     const now = Date.now();
     const endsAt = new Date(session.countdownEndsAt).getTime();
-    if (now >= endsAt) {
+    // Allow 2000ms tolerance for network latency & timer precision
+    if (now >= endsAt - 2000) {
       // Atomically transition to REVEALED
       const revealed = await Celebration.findOneAndUpdate(
         { sessionId, status: 'COUNTDOWN' },
