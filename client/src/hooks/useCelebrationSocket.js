@@ -33,9 +33,17 @@ export function useCelebrationSocket() {
 
   // Initialize Socket connection
   useEffect(() => {
-    const s = io(SOCKET_URL, {
+    let socketHost = SOCKET_URL;
+    try {
+      if (SOCKET_URL && (SOCKET_URL.startsWith('http://') || SOCKET_URL.startsWith('https://'))) {
+        const parsed = new URL(SOCKET_URL);
+        socketHost = parsed.origin; // Always use base host to connect to root namespace
+      }
+    } catch (e) {}
+
+    const s = io(socketHost, {
       transports: ['websocket', 'polling'],
-      reconnectionAttempts: 15,
+      reconnectionAttempts: 25,
       reconnectionDelay: 1000,
       auth: {
         sessionId: SESSION_ID
