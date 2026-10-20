@@ -1,0 +1,15 @@
+{
+  "name": "two-souls-one-celebration",
+  "version": "1.0.0",
+  "description": "Production-minded birthday surprise website for twin sisters Kowsalya & Kowsika",
+  "scripts": {
+    "server": "npm --prefix server start",
+    "server:dev": "npm --prefix server run dev",
+    "client": "npm --prefix client run dev",
+    "client:build": "npm --prefix client run build",
+    "test:e2e": "node server/test/e2e-test.js",
+    "test:refresh": "node server/test/test-refresh-restart.js",
+    "test:waiting": "node server/test/test-waiting-and-countdown.js",
+    "test:video": "node server/test/test-video-transcode.js"
+  }
+}

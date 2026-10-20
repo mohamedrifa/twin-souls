@@ -1,0 +1,95 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #120309;
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(100, 28, 66, 0.45) 0%, transparent 65%),
+    radial-gradient(circle at 50% 100%, rgba(42, 9, 26, 0.6) 0%, transparent 70%);
+  color: #fbf8f2;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Regal Heading Styles */
+.font-regal {
+  font-family: 'Cinzel', 'Playfair Display', Georgia, serif;
+  letter-spacing: 0.04em;
+}
+
+.font-script {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+}
+
+/* Gold Gradient Text */
+.text-gold-gradient {
+  background: linear-gradient(135deg, #fcedb0 0%, #d4af37 50%, #99781d 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Gold Border Glow Card */
+.regal-card {
+  background: linear-gradient(180deg, rgba(46, 12, 28, 0.85) 0%, rgba(24, 5, 14, 0.95) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.6), inset 0 0 15px rgba(212, 175, 55, 0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.regal-card-active {
+  border: 1px solid rgba(212, 175, 55, 0.65);
+  box-shadow: 0 0 35px rgba(212, 175, 55, 0.22), inset 0 0 20px rgba(212, 175, 55, 0.08);
+}
+
+/* Button with Antique Gold Aesthetic */
+.btn-gold {
+  background: linear-gradient(135deg, #dfb743 0%, #c59b27 50%, #9e7a17 100%);
+  color: #120309;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  box-shadow: 0 4px 20px rgba(212, 175, 55, 0.35);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-gold:hover, .btn-gold:active {
+  background: linear-gradient(135deg, #f2cd5c 0%, #d4af37 50%, #ad861a 100%);
+  box-shadow: 0 6px 28px rgba(212, 175, 55, 0.55);
+  transform: translateY(-1px);
+}
+
+.btn-gold:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Secondary Button */
+.btn-outline-gold {
+  background: rgba(28, 6, 16, 0.6);
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  color: #f4ede1;
+  transition: all 0.2s ease;
+}
+
+.btn-outline-gold:hover, .btn-outline-gold:active {
+  background: rgba(46, 12, 28, 0.9);
+  border-color: rgba(212, 175, 55, 0.8);
+  color: #fbf8f2;
+}
+
+/* No tap highlight */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
